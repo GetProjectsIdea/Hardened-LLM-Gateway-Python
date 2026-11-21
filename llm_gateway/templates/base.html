@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Hardened LLM Gateway{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body><header class="top"><div class="brand"><span class="logo">🛡️</span> Hardened LLM Gateway <small>v{{ version }}</small></div>
+{% block nav %}{% endblock %}</header>
+<main>{% block body %}{% endblock %}</main>
+<footer>MIT licensed · per-user hashed keys · no default credentials · <a href="https://getprojects.org/hardened-llm-gateway-python/">tutorial</a></footer>
+</body></html>

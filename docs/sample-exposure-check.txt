@@ -1,0 +1,17 @@
+$ python -m llm_gateway check-exposure http://127.0.0.1:11434   # raw Ollama
+Read-only exposure self-check of http://127.0.0.1:11434 (GET requests, no credentials)
+  Only run this against systems you own or are authorised to test.
+  EXPOSED     /api/tags      HTTP 200  anyone can list and run models: qwen2.5-coder:3b
+  EXPOSED     /api/version   HTTP 200  Ollama 0.40.16 answers without auth
+  EXPOSED     /v1/models     HTTP 200  1 models listed without a key
+  closed      /model/info    HTTP 404  
+  closed      /api/config    HTTP 404  
+
+$ python -m llm_gateway check-exposure http://127.0.0.1:8088    # through the gateway
+Read-only exposure self-check of http://127.0.0.1:8088 (GET requests, no credentials)
+  Only run this against systems you own or are authorised to test.
+  closed      /api/tags      HTTP 404  
+  closed      /api/version   HTTP 404  
+  protected   /v1/models     HTTP 401  authentication required
+  closed      /model/info    HTTP 404  
+  closed      /api/config    HTTP 404  

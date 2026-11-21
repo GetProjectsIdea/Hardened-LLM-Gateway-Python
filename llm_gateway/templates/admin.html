@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% block title %}Gateway admin{% endblock %}
+{% block nav %}<nav><a href="{{ url_for('admin') }}" class="on">Dashboard</a><a href="{{ url_for('admin_audit_config') }}">Config auditor</a>
+<form method="post" action="{{ url_for('admin_logout') }}" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">Log out</button></form></nav>{% endblock %}
+{% block body %}
+{% if new_key %}<section class="card newkey"><h2>New key for {{ new_key.user }}</h2>
+<p>Copy it now. It is shown <strong>once</strong> and stored only as an HMAC-SHA256 hash.</p><pre class="code">{{ new_key.key }}</pre></section>{% endif %}
+{% if flash %}<p class="alert">{{ flash }}</p>{% endif %}
+<div class="grid">
+<section class="card"><h2>Start-up checks</h2><ul class="checks">
+{% for ch in checks %}<li class="lvl-{{ ch.level }}"><b>{{ ch.level }}</b> <span>{{ ch.name }}</span><em>{{ ch.message }}</em></li>{% endfor %}</ul></section>
+<section class="card"><h2>Traffic</h2>
+<div class="stats"><div><b>{{ stats.by_event.get('request', 0) }}</b>requests</div><div><b>{{ stats.by_event.get('auth_failed', 0) }}</b>auth failures</div>
+<div><b>{{ stats.by_event.get('blocked_path', 0) }}</b>blocked paths</div><div><b>{{ stats.total_tokens }}</b>tokens</div></div>
+<h3>Detections</h3>
+{% if not findings %}<p class="ok">No suspicious activity.</p>{% endif %}
+<ul class="findings">{% for f in findings %}<li class="sev-{{ f.severity }}"><b>{{ f.severity }}</b> <code>{{ f.rule }}</code> {{ f.detail }}<br><small>{{ f.advice }}</small></li>{% endfor %}</ul></section>
+</div>
+<section class="card"><h2>API keys <small class="muted">({{ keys|length }}; there is no default key)</small></h2>
+<table><thead><tr><th>ID</th><th>User</th><th>Status</th><th>Models</th><th>RPM</th><th>Tokens today</th><th>Expires</th><th>Last used</th><th></th></tr></thead><tbody>
+{% for k in keys %}<tr><td><code>{{ k.key_id }}</code></td><td>{{ k.user }}</td><td><span class="pill {{ k.status() }}">{{ k.status() }}</span></td>
+<td>{{ k.models|join(', ') or 'default' }}</td><td>{{ k.rpm }}</td><td>{{ budget.used(k.key_id) }} / {{ k.daily_tokens }}</td><td>{{ k.expires|ts }}</td><td>{{ k.last_used|ts }}</td>
+<td>{% if k.status() == 'active' %}<form method="post" action="{{ url_for('admin_keys') }}" class="inline"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="key_id" value="{{ k.key_id }}">
+<button name="action" value="rotate" class="small">Rotate</button><button name="action" value="revoke" class="small danger">Revoke</button></form>{% endif %}</td></tr>{% endfor %}
+</tbody></table>
+<form method="post" action="{{ url_for('admin_keys') }}" class="row"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="action" value="create">
+<input name="user" placeholder="user (e.g. alice)" required><input name="models" placeholder="models (blank = default)"><input name="rpm" type="number" value="30" min="1" title="requests/minute">
+<input name="daily_tokens" type="number" value="200000" min="1" title="tokens/day"><input name="ttl_days" type="number" value="90" min="1" title="expires in days"><button class="btn">Create key</button></form></section>
+<section class="card"><h2>Recent audit events <small class="muted">(no keys or prompts are logged)</small></h2>
+<table class="log"><thead><tr><th>Time (UTC)</th><th>Event</th><th>User</th><th>IP</th><th>Path / model</th><th>Status</th><th>Tokens</th></tr></thead><tbody>
+{% for e in events %}<tr class="ev-{{ e.event }}"><td>{{ e.time }}</td><td>{{ e.event }}</td><td>{{ e.user or '' }}</td><td>{{ e.ip or '' }}</td><td>{{ e.model or e.path or '' }}</td><td>{{ e.status or e.reason or '' }}</td><td>{{ e.total_tokens or '' }}</td></tr>{% endfor %}
+</tbody></table></section>
+{% endblock %}

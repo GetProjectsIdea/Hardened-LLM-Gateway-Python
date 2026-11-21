@@ -1,0 +1,13 @@
+$ python -m llm_gateway logs verify
+OK: 27 lines, hash chain intact
+$ python -m llm_gateway logs report
+Audit report: data/audit.jsonl
+  events=27  tokens=304  auth_failed=9  blocked_path=10  key_created=2  model_denied=1  request=5
+  HIGH   D1-auth-spray      9 failed authentications from 127.0.0.1
+         next: Possible key guessing or a leaked-but-revoked key in use. Block the IP at the firewall and check where the attempts come from.
+  HIGH   D2-mgmt-probe      requests to management/admin paths: /.env, /api/config, /api/create, /api/pull, /api/tags, /api/version, /guardrails/test_custom_code, /key/generate, /model/info
+         next: Someone is looking for model-management or key endpoints (pull/create/key/guardrails). Make sure LiteLLM/Ollama admin APIs are never exposed.
+  HIGH   D3-key-validation  3 requests with max_tokens<=1 for key a2f1ca238b56 (pardeep) from 127.0.0.1
+         next: Tiny single-token requests are a known pattern for checking whether a stolen key works. Rotate this key and ask the owner.
+  LOW    D6-model-denied    key a2f1ca238b56 (pardeep) asked for models it may not use 1 time(s)
+         next: Expected occasionally; repeated attempts at premium models can indicate misuse.

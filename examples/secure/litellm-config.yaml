@@ -1,0 +1,14 @@
+# Hardened LiteLLM config (if you run LiteLLM behind the gateway instead of plain Ollama).
+# Run a patched image (1.84.0 or later) and never publish port 4000 to the internet.
+model_list:
+  - model_name: qwen2.5-coder:3b
+    litellm_params:
+      model: ollama/qwen2.5-coder:3b
+      api_base: http://ollama:11434
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY      # from a secret store, never in this file
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY   # long random value, admins only
+  database_url: os.environ/DATABASE_URL

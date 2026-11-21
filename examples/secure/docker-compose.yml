@@ -1,0 +1,56 @@
+# Hardened reference stack: Ollama is private, every client goes through the gateway.
+#   1) python -m llm_gateway init --env-file .env   (or copy env.example and fill in random values)
+#   2) docker compose up -d --build
+#   3) docker compose exec gateway python -m llm_gateway keys create alice
+services:
+  ollama:
+    image: ollama/ollama:0.40.16       # pin versions; update deliberately
+    networks: [llm]                    # no "ports:" -> not reachable from outside Docker
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434       # inside the private network only
+
+  gateway:
+    build: ../..
+    depends_on: [ollama]
+    networks: [llm]
+    ports:
+      - "127.0.0.1:8088:8088"          # loopback only; publish via a TLS reverse proxy
+    environment:
+      GATEWAY_KEY_PEPPER: "${GATEWAY_KEY_PEPPER:?run llm_gateway init}"
+      GATEWAY_ADMIN_TOKEN: "${GATEWAY_ADMIN_TOKEN:?run llm_gateway init}"
+      GATEWAY_UPSTREAM_URL: http://ollama:11434/v1
+      GATEWAY_MODELS: qwen2.5-coder:3b
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_ALLOW_PUBLIC_BIND: "1"    # container interface; host side is 127.0.0.1
+      GATEWAY_KEYS_FILE: /data/keys.json
+      GATEWAY_AUDIT_LOG: /data/audit.jsonl
+    volumes:
+      - gateway-data:/data
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.6.30   # pin a current release
+    depends_on: [gateway]
+    networks: [llm]
+    ports:
+      - "127.0.0.1:3000:8080"
+    environment:
+      WEBUI_SECRET_KEY: "${WEBUI_SECRET_KEY:?set a long random value}"
+      ENABLE_SIGNUP: "False"            # create the admin first, then invite users
+      ENABLE_OLLAMA_API: "False"        # no direct Ollama access, only via the gateway
+      OPENAI_API_BASE_URL: http://gateway:8088/v1
+      OPENAI_API_KEY: "${OPENWEBUI_GATEWAY_KEY:?create it with keys create open-webui}"
+    volumes:
+      - open-webui:/app/backend/data
+
+networks:
+  llm: {}
+volumes:
+  ollama: {}
+  gateway-data: {}
+  open-webui: {}

@@ -1,0 +1,36 @@
+# DELIBERATELY INSECURE example for the config auditor. Do NOT deploy this.
+# Every problem here is a pattern listed in public reports about LLM API-key theft.
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"            # unauthenticated Ollama API on every interface
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - OLLAMA_ORIGINS=*
+  litellm:
+    image: ghcr.io/berriai/litellm:main-v1.83.4-stable   # older than 1.84.0
+    ports:
+      - "4000:4000"              # admin UI + /key + /guardrails APIs on the internet
+    environment:
+      LITELLM_MASTER_KEY: sk-1234   # the default from the quick-start docs
+      UI_PASSWORD: admin
+      DATABASE_URL: postgresql://llm:postgres@db:5432/litellm
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    ports:
+      - "3000:8080"
+    environment:
+      - WEBUI_AUTH=False
+      - WEBUI_SECRET_KEY=t0p-s3cr3t
+      - ENABLE_SIGNUP=True
+      - DEFAULT_USER_ROLE=admin
+      - OLLAMA_BASE_URL=http://ollama:11434
+  db:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: postgres

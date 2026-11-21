@@ -1,0 +1,70 @@
+$ python -m llm_gateway audit-config examples/insecure
+Config audit: examples/insecure
+  HIGH   LGW-O03  Ollama API published on all interfaces  docker-compose.yml:7
+         service 'ollama' publishes 0.0.0.0:11434->11434. Ollama has no authentication, so anyone who can reach it can run, pull, create or delete models.
+         fix: Remove the ports entry (other containers reach it over the internal network) or bind 127.0.0.1:11434:11434.
+  HIGH   LGW-L04  Outdated LiteLLM image  docker-compose.yml:12
+         image 'ghcr.io/berriai/litellm:main-v1.83.4-stable' is older than 1.84.0. CVE-2026-40217 (guardrail sandbox escape, in CISA KEV since 18 Nov 2026) is fixed in 1.83.10 and the /key/regenerate privilege escalation in 1.84.0.
+         fix: Upgrade LiteLLM to 1.84.0 or later, then rotate the master key and any virtual keys.
+  HIGH   LGW-L02  LiteLLM proxy published on all interfaces  docker-compose.yml:14
+         service 'litellm' publishes 0.0.0.0:4000->4000, including the admin UI and the /key, /user and /guardrails management APIs.
+         fix: Bind 127.0.0.1 and expose only the chat routes through the hardened gateway or a reverse proxy with an allow-list.
+  HIGH   LGW-L01  Default or weak LiteLLM master key  docker-compose.yml:16
+         LITELLM_MASTER_KEY=sk-1…****** is a well-known default value. Attack playbooks try the LiteLLM default master key first.
+         fix: Generate a long random key (python -m llm_gateway init), keep it in a secret store, and give users virtual keys instead of the master key.
+  HIGH   LGW-L10  Weak LiteLLM admin UI password  docker-compose.yml:17
+         UI_PASSWORD is a well-known default value.
+         fix: Use SSO or a long random UI_PASSWORD and keep the LiteLLM UI off the internet.
+  HIGH   LGW-W01  Open WebUI authentication disabled  docker-compose.yml:26
+         WEBUI_AUTH=False turns off login: anyone who can reach the UI can use every connected model and see stored provider connections.
+         fix: Remove WEBUI_AUTH=False (the default is True). Use it only for a single-user, localhost-only install.
+  HIGH   LGW-W02  Default or weak Open WebUI secret key  docker-compose.yml:27
+         WEBUI_SECRET_KEY=t0p-…****** is a well-known default value. It signs login tokens, so a known value lets anyone forge a session.
+         fix: Set WEBUI_SECRET_KEY to a long random value and restart Open WebUI (users must log in again).
+  HIGH   LGW-W04  New Open WebUI users become admins  docker-compose.yml:29
+         DEFAULT_USER_ROLE=admin gives every new account admin rights (connections, API keys, users).
+         fix: Use DEFAULT_USER_ROLE=pending (default) or user.
+  HIGH   LGW-D02  Postgres published on all interfaces  docker-compose.yml:34
+         service 'db' publishes 0.0.0.0:5432->5432.
+         fix: Delete the ports entry; only the app containers need the database.
+  HIGH   LGW-L07  Provider API key hard-coded in LiteLLM config  litellm-config.yaml:6
+         model 'gpt-4o' has api_key sk-proj-…****** written in the file. Gateways that pool provider keys are the main target of key-theft campaigns.
+         fix: Use api_key: os.environ/PROVIDER_API_KEY, rotate this key now, and set a spend limit at the provider.
+  HIGH   LGW-L01  Default or weak LiteLLM master key  litellm-config.yaml:12
+         master_key sk-1…****** is a well-known default value. 'sk-1234' appears in many examples and attack playbooks.
+         fix: Use master_key: os.environ/LITELLM_MASTER_KEY with a long random value; never commit it.
+  HIGH   LGW-W01  Open WebUI authentication disabled  open-webui.env:2
+         WEBUI_AUTH=False turns off login: anyone who can reach the UI can use every connected model and see stored provider connections.
+         fix: Remove WEBUI_AUTH=False (the default is True). Use it only for a single-user, localhost-only install.
+  HIGH   LGW-W02  Default or weak Open WebUI secret key  open-webui.env:3
+         WEBUI_SECRET_KEY=t0p-…****** is a well-known default value. It signs login tokens, so a known value lets anyone forge a session.
+         fix: Set WEBUI_SECRET_KEY to a long random value and restart Open WebUI (users must log in again).
+  MEDIUM LGW-O02  Ollama allows requests from any web origin  docker-compose.yml:10
+         OLLAMA_ORIGINS=* lets any website you visit call your local Ollama from the browser.
+         fix: Remove it or list only the exact origins you need.
+  MEDIUM LGW-W05  Open WebUI published on all interfaces  docker-compose.yml:24
+         service 'open-webui' publishes 0.0.0.0:3000->8080 over plain HTTP.
+         fix: Bind 127.0.0.1 and publish it through a TLS reverse proxy; keep authentication on and sign-up off.
+  MEDIUM LGW-W03  Open WebUI public sign-up enabled  docker-compose.yml:28
+         ENABLE_SIGNUP=True lets strangers create accounts.
+         fix: Set ENABLE_SIGNUP=False after creating the admin account, and invite users instead.
+  MEDIUM LGW-D01  Weak POSTGRES_PASSWORD  docker-compose.yml:36
+         POSTGRES_PASSWORD is a well-known default value. The database holds hashed keys, spend data and encrypted provider keys.
+         fix: Use a long random password and keep the database on an internal network.
+  MEDIUM LGW-L08  Custom-code guardrail configured  litellm-config.yaml:16
+         Custom-code guardrails run Python inside the proxy. CVE-2026-40217 (sandbox escape via /guardrails/test_custom_code) is in CISA KEV.
+         fix: Run LiteLLM 1.84.0+, block /guardrails/* from the internet, and run the container as non-root.
+  MEDIUM LGW-O01  Ollama listens on all network interfaces  ollama.service:3
+         OLLAMA_HOST=0.0.0.0:11434 exposes the unauthenticated Ollama API (chat, /api/pull, /api/create, /api/delete) to the network.
+         fix: Use OLLAMA_HOST=127.0.0.1:11434 and put the hardened gateway in front, or firewall port 11434.
+  MEDIUM LGW-O02  Ollama allows requests from any web origin  ollama.service:4
+         OLLAMA_ORIGINS=* lets any website you visit call your local Ollama from the browser.
+         fix: Remove it or list only the exact origins you need.
+  MEDIUM LGW-W03  Open WebUI public sign-up enabled  open-webui.env:4
+         ENABLE_SIGNUP=True lets strangers create accounts.
+         fix: Set ENABLE_SIGNUP=False after creating the admin account, and invite users instead.
+  MEDIUM LGW-S02  Default or placeholder value in OPENAI_API_KEY  open-webui.env:5
+         OPENAI_API_KEY=chan…****** is a well-known default value.
+         fix: Replace it with a real secret from a secret manager or an untracked .env file.
+
+  Hardening score: 0/100   HIGH 13  MEDIUM 9  LOW 0

@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}Config auditor{% endblock %}
+{% block nav %}<nav><a href="{{ url_for('admin') }}">Dashboard</a><a href="{{ url_for('admin_audit_config') }}" class="on">Config auditor</a></nav>{% endblock %}
+{% block body %}
+<section class="card"><h2>Audit a LiteLLM / Open WebUI / Ollama config</h2>
+<p class="muted">Paste a docker-compose.yml, LiteLLM config.yaml, .env file or systemd unit. Nothing is stored or sent anywhere.</p>
+<form method="post"><input type="hidden" name="csrf" value="{{ csrf }}">
+<label>File type <select name="name">{% for n in ['docker-compose.yml','config.yaml','.env','ollama.service'] %}<option {% if n == name %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></label>
+<textarea name="text" rows="12" spellcheck="false">{{ text }}</textarea><button class="btn">Audit</button></form></section>
+{% if findings is not none %}<section class="card"><h2>{{ findings|length }} finding(s)</h2>
+{% if not findings %}<p class="ok">No findings.</p>{% endif %}
+<ul class="findings">{% for f in findings %}<li class="sev-{{ f.severity }}"><b>{{ f.severity }}</b> <code>{{ f.rule }}</code> <strong>{{ f.title }}</strong>{% if f.line %} <small>(line {{ f.line }})</small>{% endif %}<br>{{ f.detail }}<br><small>Fix: {{ f.fix }}</small></li>{% endfor %}</ul></section>{% endif %}
+{% endblock %}

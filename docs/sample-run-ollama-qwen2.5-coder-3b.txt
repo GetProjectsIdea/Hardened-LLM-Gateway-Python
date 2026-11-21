@@ -1,0 +1,34 @@
+$ python -m llm_gateway ask --key "" "hello"
+HTTP 401 {"error":{"message":"invalid or missing API key","type":"invalid_api_key"}}
+
+$ python -m llm_gateway ask --key sk-1234 "hello"
+HTTP 401 {"error":{"message":"invalid or missing API key","type":"invalid_api_key"}}
+
+$ curl -X POST http://127.0.0.1:8088/api/pull -d '{"model":"anything"}'
+{"error":{"message":"not found","type":"not_found"}}
+
+$ python -m llm_gateway ask --key $PARDEEP_KEY "Write a Python function that checks if a port is open on localhost. Code only."
+HTTP 200 in 5.5s  model=qwen2.5-coder:3b  tokens=169  remaining=199831
+```python
+import socket
+
+def is_port_open(port):
+    """
+    Checks if the specified port is open on localhost.
+
+    Args:
+    port (int): The port number to check.
+
+    Returns:
+    bool: True if the port is open, False otherwise.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.1)  # Set a timeout of 0.1 seconds for the connection attempt
+        try:
+            s.connect(('localhost', port))
+            return True
+        except socket.error:
+            return False
+```
+$ python -m llm_gateway logs tail -n 1
+{"completion_tokens": 123, "event": "request", "ip": "127.0.0.1", "key_id": "a2f1ca238b56", "latency_ms": 5485, "max_tokens": 160, "model": "qwen2.5-coder:3b", "path": "/v1/chat/completions", "prev": "2bcd55f14a5b25d7d601e011fcd69f88b107a05b18c7d34b48a0f79ceb404898", "prompt_chars": 111, "prompt_sha256": "484ecc91192ec2cc", "prompt_tokens": 46, "status": 200, "stream": false, "time": "2026-11-21T03:47:10Z", "total_tokens": 169, "ts": 1795232830.397, "user": "pardeep"}

@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block body %}
+<section class="card hero"><h1>Self-hosted LLM gateway</h1>
+<p>This endpoint serves an OpenAI-compatible API for authorised users only. Send your personal key in the <code>Authorization: Bearer</code> header.</p>
+<pre class="code">curl http://127.0.0.1:8088/v1/chat/completions \
+  -H "Authorization: Bearer $GATEWAY_API_KEY" -H "Content-Type: application/json" \
+  -d '{"model":"qwen2.5-coder:3b","messages":[{"role":"user","content":"Hello"}]}'</pre>
+{% if admin %}<p><a class="btn" href="{{ url_for('admin_login') }}">Admin login</a></p>{% endif %}</section>
+{% endblock %}

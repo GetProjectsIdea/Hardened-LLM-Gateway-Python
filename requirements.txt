@@ -1,0 +1,3 @@
+# The config auditor needs PyYAML; the gateway and admin UI need Flask.
+PyYAML>=6.0
+Flask>=3.0

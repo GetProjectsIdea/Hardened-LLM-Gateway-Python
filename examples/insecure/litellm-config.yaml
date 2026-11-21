@@ -1,0 +1,17 @@
+# DELIBERATELY INSECURE LiteLLM config for the auditor demo. The provider key below is fake.
+model_list:
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: sk-proj-FAKEexampleKEYfortheAUDITORdemo0000000000
+  - model_name: qwen-coder
+    litellm_params:
+      model: ollama/qwen2.5-coder:3b
+      api_base: http://ollama:11434
+general_settings:
+  master_key: sk-1234
+guardrails:
+  - guardrail_name: my-filter
+    litellm_params:
+      guardrail: custom_code
+      mode: pre_call

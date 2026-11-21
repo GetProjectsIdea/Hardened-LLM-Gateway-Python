@@ -1,0 +1,50 @@
+$ python -m llm_gateway demo
+Hardened LLM gateway: offline demo (mock model, temp dir lgw-demo-fltswcm6)
+
+[1] Try to start with the LiteLLM-style default secret 'sk-1234'
+  ERROR  GATEWAY_KEY_PEPPER         pepper is a well-known default value; contains only digits; is too short (7 chars, need at least 32); uses too few distinct characters
+  ERROR  GATEWAY_ADMIN_TOKEN        admin token is a well-known default value; is too short (8 chars, need at least 32); uses too few distinct characters
+  ERROR  GATEWAY_UPSTREAM_API_KEY   upstream key is a well-known default value; contains only digits; is too short (7 chars, need at least 20); uses too few distinct characters
+  ERROR  GATEWAY_HOST               refusing to bind 0.0.0.0 without GATEWAY_ALLOW_PUBLIC_BIND=1 (default is 127.0.0.1)
+  REFUSING TO START
+
+[2] Generate strong secrets and start on 127.0.0.1
+  OK     GATEWAY_KEY_PEPPER         strong pepper set (keys are HMAC-SHA256 hashed at rest)
+  OK     GATEWAY_ADMIN_TOKEN        strong admin token set (admin UI enabled)
+  OK     GATEWAY_HOST               bound to loopback 127.0.0.1
+  keys in store: 0  (no default key exists)
+
+[3] Create per-user keys (shown once, stored as HMAC-SHA256)
+  alice -> lgw_69d7b48da824_…******   bob -> lgw_d8b4b93b3e80_…******
+  on disk: 044188a7aaa87da3ba7ce34c…  (the key itself is never stored)
+
+[4] Requests through the gateway
+  no key                                       -> HTTP 401  invalid or missing API key
+  LiteLLM default master key 'sk-1234'         -> HTTP 401  invalid or missing API key
+  alice, qwen2.5-coder:3b                      -> HTTP 200  Hello from the mock model. You said: Write hello world in Python
+  bob asks for a model he may not use          -> HTTP 403  model 'qwen2.5-coder:3b' is not allowed for this key
+  bob lists his models                         -> HTTP 200  models: llama3.2:3b
+  Ollama /api/pull (model management)          -> HTTP 404  not found
+  LiteLLM /key/generate (admin API)            -> HTTP 404  not found
+  LiteLLM /guardrails/test_custom_code         -> HTTP 404  not found
+  key sent in the URL                          -> HTTP 400  send the API key in the Authorization header, never in the URL
+
+[5] Rate limit (alice: 5 requests/minute) and key-validation probes
+  alice x4 with max_tokens=1 from a new IP     -> HTTP 200  Hi
+  alice 6th request this minute                -> HTTP 429  rate limit of 5 requests/minute exceeded
+
+[6] Revoke and key spraying
+  bob after revoke                             -> HTTP 401  invalid or missing API key
+  5 guessed keys from 203.0.113.9              -> HTTP 401  invalid or missing API key
+
+[7] Audit log: hash chain + detections
+  OK: 20 lines, hash chain intact
+  sample line: {'event': 'request', 'user': 'alice', 'model': 'qwen2.5-coder:3b', 'status': 200, 'total_tokens': 17}
+  HIGH   D1-auth-spray      5 failed authentications from 203.0.113.9
+  HIGH   D2-mgmt-probe      requests to management/admin paths: /api/pull, /guardrails/test_custom_code, /key/generate
+  HIGH   D3-key-validation  4 requests with max_tokens<=1 for key 69d7b48da824 (alice) from 198.51.100.7
+  MEDIUM D8-revoked-key-use revoked/expired key d8b4b93b3e80 (bob) still used from 10.0.0.5
+  LOW    D5-rate-limited    key 69d7b48da824 (alice) was rate limited 1 time(s)
+  LOW    D6-model-denied    key d8b4b93b3e80 (bob) asked for models it may not use 1 time(s)
+
+Done. No API key or prompt text was written to the log.
